@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# ~/.ssh/config
+# SSH Client Configuration
+# 
+# Purpose: Configure SSH to use specific private key and disable password auth
+# - Uses private key: ~/.ssh/school
+# - Disables password authentication (key-only)
+# - Applies to all SSH connections
+
+Host *
+    IdentityFile ~/.ssh/school
+    PasswordAuthentication no
