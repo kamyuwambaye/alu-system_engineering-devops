@@ -1,22 +1,35 @@
 #!/usr/bin/env bash
-# Configure Nginx to add a custom HTTP response header X-Served-By with the server hostname
+# Configure Nginx server with custom X-Served-By header
 
-# Update and install nginx
-apt-get update -y
-apt-get install nginx -y
+sudo apt-get update -y
+sudo apt-get install -y nginx
 
-# Get the hostname
+# Get the actual hostname
 HOSTNAME=$(hostname)
 
-# Backup original config
-cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.backup
+config=\
+"server {
+        listen 80 default_server;
+        listen [::]:80 default_server;
+        root /var/www/html;
+        index index.html index.htm index.nginx-debian.html;
+        server_name _;
+        
+        location / {
+            add_header X-Served-By $HOSTNAME;
+            try_files \$uri \$uri/ =404;
+        }
+}
+"
 
-# Add custom header to nginx http block
-sed -i "/http {/a \    add_header X-Served-By $HOSTNAME;" /etc/nginx/nginx.conf
+# Create or overwrite the default configuration
+echo "$config" | sudo tee /etc/nginx/sites-available/default > /dev/null
 
-# Ensure nginx is configured to serve
-mkdir -p /var/www/html
-echo "Holberton School" > /var/www/html/index.html
+# Test the configuration before restarting
+sudo nginx -t
 
-# Restart nginx without systemctl
-service nginx restart
+# Restart Nginx
+sudo service nginx restart
+
+# Enable Nginx to start on boot
+sudo systemctl enable nginx
