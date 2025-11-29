@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Configures Nginx to listen on port 80
+
+# Remove default site if it has issues and ensure proper configuration
+rm -f /etc/nginx/sites-enabled/default
+ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+
+# Ensure Nginx is configured to listen on port 80
+sed -i 's/listen 8080 default_server;/listen 80 default_server;/g' /etc/nginx/sites-available/default
+sed -i 's/listen \[::\]:8080 default_server;/listen [::]:80 default_server;/g' /etc/nginx/sites-available/default
+
+# Kill any process that might be blocking port 80
+fuser -k 80/tcp 2>/dev/null || true
+
+# Restart Nginx service
+service nginx restart
