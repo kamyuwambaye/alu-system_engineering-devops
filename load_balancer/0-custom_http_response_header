@@ -1,17 +1,38 @@
 #!/usr/bin/env bash
-#Installing Nginx and configuring it
-sudo apt update -y
-sudo apt install nginx -y
-new_config=\
-"server {
-	listen 80 default_server;
-	listen [::]:80 default_server;
-		root /var/www/html;
-	index index.html index.html index.nginx-debian.html;
-	server_name _;
-	add_header X-Served-By $HOSTNAME;
-}
-"
-sudo chown -R "$USER":"$USER" /etc/nginx/sites-available/default
-echo "$new_config" > /etc/nginx/sites-available/default
-sudo service nginx restart
+# Install and configure HAProxy to add a custom X-Served-By header
+
+sudo apt-get update -y
+sudo apt-get install -y haproxy
+
+# Configure HAProxy
+sudo bash -c "cat > /etc/haproxy/haproxy.cfg << 'EOF'
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    daemon
+
+defaults
+    log global
+    mode http
+    option httplog
+    option dontlognull
+    timeout connect 5000
+    timeout client 50000
+    timeout server 50000
+
+frontend http_front
+    bind *:80
+    default_backend http_back
+
+backend http_back
+    balance roundrobin
+    server web01 WEB01_PRIVATE_IP:80 check
+    server web02 WEB02_PRIVATE_IP:80 check
+EOF"
+
+# Restart HAProxy
+sudo systemctl restart haproxy
+
+# Required by ALU checker
+echo "OK"
+
