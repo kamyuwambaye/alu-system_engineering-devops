@@ -1,29 +1,48 @@
 #!/usr/bin/env bash
-# Install and configure HAProxy on lb-01 server to load balance between web-01 and web-02
+# Installs and configures HAProxy load balancer with roundrobin distribution
 
-# Update system and install HAProxy
-apt-get -y update
-apt-get -y install haproxy
+apt-get update -y
+apt-get install -y haproxy
 
-# Enable HAProxy to be started by init script
-sed -i 's/ENABLED=0/ENABLED=1/' /etc/default/haproxy
+# Enable HAProxy service in init system
+sed -i 's/ENABLED=0/ENABLED=1/' /etc/default/haproxy || echo "ENABLED=1" >> /etc/default/haproxy
 
-# Backup the original haproxy.cfg
-cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.bak
+# Configure HAProxy to balance between web-01 and web-02
+cat <<EOF | sudo tee /etc/haproxy/haproxy.cfg > /dev/null
+global 
+    log /dev/log local0
+    log /dev/log local1 notice
+    chroot /var/lib/haproxy
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
 
-# Configure HAProxy with frontend and backend
-cat >> /etc/haproxy/haproxy.cfg <<EOF
+defaults
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    timeout connect 5000
+    timeout client  50000
+    timeout server  50000
+    errorfile 400 /etc/haproxy/errors/400.http
+    errorfile 403 /etc/haproxy/errors/403.http
+    errorfile 408 /etc/haproxy/errors/408.http
+    errorfile 500 /etc/haproxy/errors/500.http
+    errorfile 502 /etc/haproxy/errors/502.http
+    errorfile 503 /etc/haproxy/errors/503.http
+    errorfile 504 /etc/haproxy/errors/504.http
 
-frontend maellene-frontend
+frontend http_front
     bind *:80
-    mode http
-    default_backend maellene-backend
+    default_backend http_back
 
-backend maellene-backend
+backend http_back
     balance roundrobin
-    server 6877-web-01 3.83.246.154:80 check
-    server 6877-web-02 54.172.186.196:80 check
+    server 6845-web-01 54.172.16.102:80 check
+    server 6845-web-02 18.233.224.205:80 check
 EOF
 
-# Restart HAProxy service
-service haproxy restart
+# Restart HAProxy to apply configuration
+service haproxy start
